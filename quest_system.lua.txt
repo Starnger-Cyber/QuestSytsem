@@ -1,0 +1,172 @@
+Coin Code
+
+-- Enhanced Coin Collecting Game Script for Roblox
+
+-- Variables for the game
+local coinModel = game.ServerStorage:WaitForChild("Coin")  -- Reference to the coin model in ServerStorage
+local coinsFolder = game.Workspace:WaitForChild("Coins")  -- Folder to store all spawned coins
+local pointsPerCoin = 10  -- Points awarded for each coin collected
+local coinsToSpawn = 20  -- Initial number of coins to spawn
+local respawnInterval = 30  -- Time in seconds between coin respawns
+local coinsPerRespawn = 5  -- Number of coins to spawn at each respawn
+
+-- Function to create and spawn coins
+local function spawnCoins(numberOfCoins)
+    for i = 1, numberOfCoins do
+        local newCoin = coinModel:Clone()  -- Clone the coin model
+        newCoin.Parent = coinsFolder  -- Parent the new coin to the Coins folder
+
+        -- Set random position for the coin
+        newCoin.Position = Vector3.new(
+            math.random(-50, 50),
+            math.random(1, 10),
+            math.random(-50, 50)
+        )
+
+        -- Adding a ClickDetector to the coin for player interaction
+        local clickDetector = Instance.new("ClickDetector")
+        clickDetector.Parent = newCoin
+
+        -- Adding a sound effect for when the coin is collected
+        local coinSound = Instance.new("Sound")
+        coinSound.SoundId = "rbxassetid://12345678"  -- Replace with actual sound ID
+        coinSound.Parent = newCoin
+
+        -- Connecting the click event to the function that awards points
+        clickDetector.MouseClick:Connect(function(player)
+            givePoints(player)
+            showCollectionNotification(player, newCoin.Position)
+            coinSound:Play()
+            wait(0.5)  -- Wait for the sound to finish playing
+            newCoin:Destroy()  -- Remove the coin after it’s collected
+        end)
+
+        -- Adding a rotation script to the coin
+        local rotationScript = Instance.new("Script")
+        rotationScript.Source = [[
+            while true do
+                script.Parent.CFrame = script.Parent.CFrame * CFrame.Angles(0, math.rad(1), 0)
+                wait(0.01)
+            end
+        ]]
+        rotationScript.Parent = newCoin
+    end
+end
+
+-- Function to award points to the player
+local function givePoints(player)
+    local leaderstats = player:FindFirstChild("leaderstats")
+    if leaderstats then
+        local points = leaderstats:FindFirstChild("Points")
+        if points then
+            points.Value = points.Value + pointsPerCoin
+        end
+    end
+end
+
+-- Function to show a collection notification
+local function showCollectionNotification(player, position)
+    local gui = Instance.new("BillboardGui")
+    gui.Size = UDim2.new(0, 100, 0, 50)
+    gui.Adornee = game.Workspace.Terrain
+    gui.Parent = game.Workspace
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Text = "+" .. pointsPerCoin .. " Points!"
+    textLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.Parent = gui
+
+    gui.StudsOffsetWorldSpace = position + Vector3.new(0, 5, 0)
+    wait(1.5)
+    gui:Destroy()
+end
+
+-- Function to create leaderstats for players
+local function onPlayerJoin(player)
+    local leaderstats = Instance.new("Folder")
+    leaderstats.Name = "leaderstats"
+    leaderstats.Parent = player
+
+    local points = Instance.new("IntValue")
+    points.Name = "Points"
+    points.Value = 0
+    points.Parent = leaderstats
+
+    createShop(player)
+end
+
+-- Function to create a shop for players
+local function createShop(player)
+    local playerGui = player:WaitForChild("PlayerGui")
+    local shopGui = Instance.new("ScreenGui")
+    shopGui.Name = "ShopGui"
+    shopGui.Parent = playerGui
+
+    local shopFrame = Instance.new("Frame")
+    shopFrame.Size = UDim2.new(0, 200, 0, 300)
+    shopFrame.Position = UDim2.new(1, -210, 0, 10)
+    shopFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    shopFrame.Parent = shopGui
+
+    local shopTitle = Instance.new("TextLabel")
+    shopTitle.Text = "Shop"
+    shopTitle.Size = UDim2.new(1, 0, 0, 50)
+    shopTitle.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    shopTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    shopTitle.Parent = shopFrame
+
+    local item1Button = Instance.new("TextButton")
+    item1Button.Text = "Speed Boost (50 Points)"
+    item1Button.Size = UDim2.new(1, 0, 0, 50)
+    item1Button.Position = UDim2.new(0, 0, 0, 60)
+    item1Button.Parent = shopFrame
+
+    item1Button.MouseButton1Click:Connect(function()
+        if player.leaderstats.Points.Value >= 50 then
+            player.leaderstats.Points.Value = player.leaderstats.Points.Value - 50
+            giveSpeedBoost(player)
+        end
+    end)
+
+    local item2Button = Instance.new("TextButton")
+    item2Button.Text = "Double Points (100 Points)"
+    item2Button.Size = UDim2.new(1, 0, 0, 50)
+    item2Button.Position = UDim2.new(0, 0, 0, 120)
+    item2Button.Parent = shopFrame
+
+    item2Button.MouseButton1Click:Connect(function()
+        if player.leaderstats.Points.Value >= 100 then
+            player.leaderstats.Points.Value = player.leaderstats.Points.Value - 100
+            pointsPerCoin = pointsPerCoin * 2
+            wait(30)  -- Double points last for 30 seconds
+            pointsPerCoin = pointsPerCoin / 2
+        end
+    end)
+end
+
+-- Function to give the player a speed boost
+local function giveSpeedBoost(player)
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = humanoid.WalkSpeed * 2
+            wait(10)  -- Speed boost lasts for 10 seconds
+            humanoid.WalkSpeed = humanoid.WalkSpeed / 2
+        end
+    end
+end
+
+-- Connect the onPlayerJoin function to the PlayerAdded event
+game.Players.PlayerAdded:Connect(onPlayerJoin)
+
+-- Initial coin spawn
+spawnCoins(coinsToSpawn)  -- Spawn initial coins at the start of the game
+
+-- Respawn coins every 30 seconds
+while true do
+    wait(respawnInterval)  -- Wait for the specified interval
+    spawnCoins(coinsPerRespawn)  -- Spawn additional coins periodically
+end
